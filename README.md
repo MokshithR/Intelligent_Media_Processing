@@ -222,8 +222,21 @@ Areas for future improvement include:
 - Detection and recovery of jobs that remain in the pending state for too long.
 
 ---
+## 6. Sample Test Results
 
-## 6. Running Instructions
+The application was tested using the three sample images provided in the assignment.
+
+The generated outputs are available in the `test_results_images/` directory.
+
+| Sample | Output |
+|--------|--------|
+| Sample Image 1 | `test_results_images/sample1_output.png` |
+| Sample Image 2 | `test_results_images/sample2_output.png` |
+| Sample Image 3 | `test_results_images/sample3_output.png` |
+
+
+
+## 7. Running Instructions
 
 ### Option A: Docker Compose (recommended)
 
@@ -302,7 +315,7 @@ Tests do **not** require a running Postgres, Redis, or Tesseract — they use SQ
 
 ---
 
-## 7. Sample API Requests and Responses
+## 8. Sample API Requests and Responses
 
 ### `GET /health`
 ```bash
@@ -509,7 +522,7 @@ curl "http://localhost:8000/images?page=1&page_size=5&status=completed"
 
 ---
 
-## 8. Assumptions Made
+## 9. Assumptions Made
 
 1. **Single Indian vehicle plate format** — The OCR check validates against the standard `AA 00 AA 0000` format. Other country formats (e.g. US, European) are not supported. Stated in the spec.
 
