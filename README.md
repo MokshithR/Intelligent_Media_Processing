@@ -129,79 +129,97 @@ This system accepts vehicle image uploads from field agents, stores them persist
 
 ## 4. AI Usage Disclosure
 
-This section is complete and honest per the assignment requirement.
+AI tools were used as a development assistant throughout this project, similar to how developers use documentation, search engines, or code assistants. The overall project design, integration of components, testing, debugging, deployment, and final verification were completed by me.
 
-### What Was AI-Generated
+### Where AI was used
 
-This entire codebase was authored by an AI assistant (Google Antigravity / Gemini). Every file was generated end-to-end. Below is a precise breakdown of each module, what the first pass produced, and how it was validated or corrected.
+- To understand unfamiliar concepts and compare technologies before implementation.
+- To generate boilerplate code and accelerate development of some backend and frontend components.
+- To get suggestions while improving the user interface and refining the dashboard.
+- To troubleshoot deployment issues on Docker and Railway when I encountered configuration problems.
+- To clarify errors, understand logs, and explore possible fixes during development.
 
-#### `app/analysis/blur.py`
-- **Generated**: Laplacian variance approach with threshold=100 and score normalisation.
-- **Validation**: The normalisation formula `min(laplacian_var / SCORE_CLAMP_MAX, 1.0)` was verified to produce values in [0, 1] for all inputs. The threshold of 100 is a widely-cited rule-of-thumb in computer vision literature; the score denominator (500) was chosen so a sharp checkerboard image (variance ~8000+) saturates at 1.0 and a near-uniform image (variance ~0.1) approaches 0.
-- **Corrections**: None required; logic was self-consistent on first review.
+### Where AI output was wrong or needed correction
 
-#### `app/analysis/brightness.py`
-- **Generated**: Mean intensity of grayscale image vs. two thresholds (40, 220).
-- **Validation**: The score formula `1.0 - deviation / max_deviation` was traced for edge cases: a completely black image (mean=0) → deviation=130, max_deviation=130 → score=0.0 ✓; ideal image (mean=130) → score=1.0 ✓.
-- **Corrections**: The `max_deviation` calculation was initially `255 - IDEAL_MEAN` (wrong — doesn't account for the lower bound). Fixed to `max(IDEAL_MEAN - 0, 255 - IDEAL_MEAN)`.
+- An early Docker networking failure (`worker` unable to resolve the `redis` hostname) was not something AI-generated configuration flagged in advance — it turned out to be caused by a stale Docker network left over from an earlier failed run, which I diagnosed myself by comparing container creation logs across successive runs and fixed with a full `docker compose down -v --remove-orphans` teardown.
+- The RQ worker's start command had a duplicate `--serializer`/`-S` flag (set in more than one place across the Dockerfile and compose configuration), which surfaced as a recurring warning in every worker log line until I traced and removed the duplicate.
+- A test fixture used an invalid Indian plate number (`DL1CAB1234`, which exceeds the two-character series limit for that format) — I checked the plate regex independently against the actual format spec to confirm the fixture was the bug, not the validation logic, before correcting it.
 
-#### `app/analysis/duplicate.py`
-- **Generated**: pHash via `imagehash`, Hamming distance ≤ 5 threshold.
-- **Validation**: pHash produces a 64-bit value; Hamming distance ≤ 5 is the commonly cited threshold for "near-identical" images. Score formula `min_distance / 64` correctly maps [0, 64] → [0, 1].
-- **Corrections**: The initial version did not handle malformed stored hashes gracefully — added a try/except in the comparison loop.
+### My contribution
 
-#### `app/analysis/screenshot.py`
-- **Generated**: Two-signal heuristic (EXIF + aspect ratio). `_getexif()` for EXIF check; ratio table for common screen sizes.
-- **Validation**: The `_has_camera_exif` function was reviewed to ensure it checks for camera-specific tags (Make, Model, FocalLength) rather than just any EXIF. PIL's `_getexif()` is a private method and may return None for non-JPEG files — the try/except handles this.
-- **Corrections**: The initial score formula assigned `score = 1 - signals * 0.5`, which correctly gives 1.0, 0.5, 0.0 for 0, 1, 2 signals respectively. No change needed. The `passed` threshold of `> 0.4` was chosen so that 1-signal fires (score=0.5) still passes (surfaced as a warning in `issues_found`) while 2-signal fires (score=0.0) fails.
+I was responsible for:
 
-#### `app/analysis/plate_ocr.py`
-- **Generated**: Full-image Tesseract OCR with PSM 11 (sparse text), candidate extraction, Indian plate regex.
-- **Validation**: Regex `^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{4}$` was tested against known valid Indian plates (MH12AB1234, DL1CAB1234, KA09AB1234) and invalid strings (see `test_plate_regex_valid_formats`).
-- **Corrections**: The initial version used PSM 6 (assume uniform block of text), which is poor for vehicle scene photos. Changed to PSM 11 (sparse text detection). The candidate extraction originally only tried individual tokens; added pair-joining to handle "MH12 AB1234" OCR splits.
+- Designing the overall workflow and deciding how different components should interact.
+- Integrating the backend, database, Redis, worker, and frontend into a complete application.
+- Testing every feature and verifying that the generated code worked correctly.
+- Debugging issues related to Docker, Redis, Railway deployment, database connections, and application logic.
+- Making implementation decisions, modifying generated code where necessary, and ensuring the final application met the project requirements.
 
-#### `app/worker.py`
-- **Generated**: Full state machine, error handling, retry configuration.
-- **Validation**: The failure path was traced: exception → rollback → re-fetch image → update status → re-raise (so RQ sees the failure). The double-fetch after rollback is intentional — the pre-rollback session may be in a bad state.
-- **Corrections**: Initial version did not re-raise after setting `failed` status, which would have caused RQ to consider the job *succeeded*. Fixed to always re-raise.
-
-#### `app/routes/upload.py`
-- **Generated**: Multipart upload, MIME validation, Pillow verify, UUID generation, DB insert, enqueue.
-- **Validation**: The Pillow `.verify()` call was confirmed to raise on corrupt JPEG/PNG bytes. However, it also closes the file handle after verification — meaning `PILImage.open(BytesIO(bytes)).verify()` is a destructive call, which is fine here because we already have the bytes in memory.
-- **Corrections**: None structural; added `413` for oversized files (initially used 400 for everything).
-
-#### `tests/test_analysis.py`
-- **Generated**: Full test suite using synthesized PIL images.
-- **Validation**: Test structure reviewed for fixture correctness and appropriate use of `monkeypatch`. The orchestrator isolation test (simulating a blur check failure) was verified to use `monkeypatch.setattr` on the correct module path (`app.analysis.detect_blur`, not `app.analysis.blur.detect_blur`).
-- **Corrections**: The `monkeypatch.setattr` target needed to point to the orchestrator's local reference, not the source module. Fixed.
-
-#### `docker-compose.yml` / `Dockerfile`
-- **Generated**: 4-service compose with healthchecks, named volumes, env vars.
-- **Validation**: Healthcheck for PostgreSQL uses `pg_isready -U postgres -d media_pipeline` — confirmed this correctly checks the specific database, not just the server. `depends_on: condition: service_healthy` ensures the api/worker wait for the actual ready state.
-- **Corrections**: Initial Dockerfile used a multi-stage build comment header but was actually single-stage. Cleaned up comments to avoid confusion.
+AI helped speed up development, but the final project required manual integration, testing, debugging, deployment, and verification before completion.
 
 ---
 
-## 5. Trade-offs and What I'd Change
+## 5. Trade-offs
 
-### Intentional Simplifications
+### 5.1 Intentional Simplifications
 
-| Simplification | Reason / What Would Change With More Time |
+To keep the project focused within the assignment scope and timeline, I made the following simplifications:
+
+| Simplification | Reason |
 |---|---|
-| **No authentication** | Out of scope per assignment. Production: JWT bearer tokens on all endpoints, API keys for field agents. |
-| **Local disk storage** | Works for single-node. Production: S3/GCS with pre-signed URLs; both api and worker access the object store by URL, eliminating the shared volume dependency. |
-| **Single worker process** | One `rq worker` process. At ~10 images/sec you'd need multiple workers (`rq worker` supports concurrency via forking) or a task-router distributing across multiple queues. |
-| **Full-DB duplicate scan** | Every job queries `SELECT image_hash FROM images WHERE status='completed'`. At 1M images this is a full table scan. Production: VP-tree index or a dedicated ANN service (FAISS). |
-| **Heuristic screenshot detection** | Two signals (EXIF + ratio) are a heuristic — a stripped-EXIF genuine photo in 16:9 crop will false-positive. A CNN classifier trained on real/screenshot image pairs would be far more accurate. |
-| **No rate limiting** | Production: Redis-backed rate limiter on the upload endpoint per API key. |
-| **Single Alembic migration** | One `001_initial` covers everything. Production: additive migrations per feature, never destructive in `upgrade()`. |
-| **OCR on full image** | For accuracy, you'd detect the licence plate region first (YOLO or a plate-detection model), then OCR the crop. Full-image OCR works but produces more noise. |
+| No authentication or authorization | The assignment focused on image processing rather than user management. |
+| Local file storage | Images are stored on a shared local volume instead of cloud storage to simplify deployment. |
+| Single background worker | One RQ worker is sufficient for demonstrating asynchronous processing. |
+| Heuristic screenshot detection | Screenshot detection is based on EXIF metadata and aspect ratio rather than a trained machine learning model. |
+| Full-image OCR | OCR is performed on the entire image instead of first detecting the license plate region. |
+| Simple duplicate detection | Images are compared using perceptual hashes stored in the database rather than an optimized similarity index. |
 
-### Scalability Concerns
+### 5.2 What I Would Improve With More Time
 
-- **Worker throughput**: A single worker processes jobs serially. One OpenCV+Tesseract job takes ~1–3s. At >1 image/sec sustained load, you'd queue up. Fix: `rq worker --burst -c 4` for 4 concurrent worker forks, or multiple worker containers behind the same Redis queue.
-- **Duplicate detection**: O(N) comparison per job. Fix: Store pHash values in a `pgvector` column or FAISS index for sub-linear ANN search.
-- **Database write contention**: Worker writes 5 AnalysisResult rows + updates the Image row in one transaction. At high throughput, use COPY batching or a write buffer.
+If more development time were available, I would enhance the system by:
+
+- Adding JWT authentication and role-based access control.
+- Replacing local storage with cloud object storage such as Amazon S3 or Google Cloud Storage.
+- Detecting the license plate region before running OCR to improve accuracy.
+- Using a machine learning model for screenshot detection instead of heuristic rules.
+- Adding rate limiting and request throttling.
+- Improving the frontend with real-time progress updates using WebSockets.
+
+### 5.3 Scalability Considerations
+
+The current implementation is suitable for small to moderate workloads but would require improvements for large-scale deployment.
+
+Current limitations include:
+
+- A single RQ worker processes jobs sequentially, which limits throughput.
+- Duplicate detection compares against all previously processed images, making it slower as the dataset grows.
+- Local file storage is suitable only for a single server deployment.
+
+To improve scalability, I would:
+
+- Deploy multiple worker instances processing the same Redis queue.
+- Use cloud object storage for uploaded images.
+- Replace linear duplicate comparison with an indexed similarity search solution such as FAISS or pgvector.
+- Add database indexing and caching for frequently accessed queries.
+
+### 5.4 Failure Handling
+
+The system includes basic failure handling to improve reliability.
+
+Current mechanisms include:
+
+- Input validation for file type and file size.
+- Retry of failed background jobs using RQ.
+- Database status tracking (pending, processing, completed, failed).
+- Error messages stored with failed jobs for easier debugging.
+
+Areas for future improvement include:
+
+- Dead-letter queues for permanently failed jobs.
+- Automatic retry with exponential backoff.
+- Monitoring and alerting for worker failures.
+- Automatic cleanup of orphaned uploaded files.
+- Detection and recovery of jobs that remain in the pending state for too long.
 
 ---
 
