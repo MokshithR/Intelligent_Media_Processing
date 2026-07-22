@@ -28,6 +28,5 @@ RUN mkdir -p /app/uploads
 # ── API entrypoint ────────────────────────────────────────────────────────────
 # Runs Alembic migrations, then starts uvicorn.
 # Migrations are idempotent so this is safe to run on every restart.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
-
+CMD ["sh", "-c", "alembic upgrade head && rq worker --with-scheduler default & uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
 EXPOSE 8000
