@@ -4,298 +4,740 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Intake — Vehicle Image Inspection</title>
-<meta name="description" content="Real-time vehicle image inspection dashboard. Upload images and get instant quality analysis: blur, brightness, duplicate detection, screenshot check, and plate OCR.">
+<meta name="description" content="Enterprise vehicle image inspection pipeline. Real-time quality and authenticity analysis: blur, brightness, duplicate detection, screenshot check, and plate OCR.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#14171A;
-    --panel:#1B1F23;
-    --panel-raised:#21262B;
-    --border:#2A2F35;
-    --text:#ECEEF0;
-    --text-muted:#8B929A;
-    --text-faint:#5B6167;
-    --amber:#F5A623;
-    --green:#4ADE80;
-    --red:#E5595E;
-    --blue:#6FA3D8;
-    --font-display:'Space Grotesk', sans-serif;
-    --font-body:'Inter', sans-serif;
-    --font-mono:'JetBrains Mono', monospace;
-  }
-  *{box-sizing:border-box; margin:0; padding:0;}
-  html,body{height:100%;}
-  body{
-    background:var(--bg);
-    color:var(--text);
-    font-family:var(--font-body);
-    -webkit-font-smoothing:antialiased;
-  }
-  @media (prefers-reduced-motion:reduce){
-    *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}
-  }
+/* ═══════════════════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════════════════ */
+:root {
+  /* Surfaces */
+  --bg:            #0D1117;
+  --surface-1:     #161B22;
+  --surface-2:     #1C2128;
+  --surface-3:     #21262D;
+  --surface-4:     #272C34;
 
-  /* ── Top bar ─────────────────────────────────────────────── */
-  .topbar{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:18px 28px;
-    border-bottom:1px solid var(--border);
-    background:var(--panel);
-  }
-  .brand{display:flex; align-items:center; gap:12px;}
-  .brand-mark{
-    width:30px; height:30px; border-radius:7px;
-    background:linear-gradient(135deg, var(--amber), #d97f1a);
-    display:flex; align-items:center; justify-content:center;
-    font-family:var(--font-mono); font-weight:600; font-size:14px; color:#1a1200;
-  }
-  .brand-text h1{font-family:var(--font-display); font-size:16px; font-weight:600; letter-spacing:0.01em;}
-  .brand-text p{font-size:11.5px; color:var(--text-muted); font-family:var(--font-mono); margin-top:1px;}
-  .conn{display:flex; align-items:center; gap:10px;}
-  .conn-field{
-    display:flex; align-items:center; gap:8px;
-    background:var(--panel-raised); border:1px solid var(--border);
-    border-radius:8px; padding:6px 10px;
-  }
-  .conn-field label{font-size:10.5px; color:var(--text-faint); font-family:var(--font-mono); text-transform:uppercase; letter-spacing:0.06em;}
-  .conn-field input{
-    background:transparent; border:none; outline:none; color:var(--text);
-    font-family:var(--font-mono); font-size:12.5px; width:170px;
-  }
-  .dot{width:7px; height:7px; border-radius:50%; background:var(--text-faint); flex-shrink:0;}
-  .dot.ok{background:var(--green); box-shadow:0 0 6px rgba(74,222,128,0.6);}
-  .dot.bad{background:var(--red); box-shadow:0 0 6px rgba(229,89,94,0.5);}
+  /* Borders */
+  --border:        #30363D;
+  --border-subtle: #21262D;
 
-  /* ── Shell ───────────────────────────────────────────────── */
-  .shell{
-    display:grid; grid-template-columns:360px 1fr;
-    height:calc(100vh - 66px);
-  }
-  @media (max-width:860px){ .shell{grid-template-columns:1fr; height:auto;} }
+  /* Text */
+  --text:          #E6EDF3;
+  --text-secondary:#8B949E;
+  --text-muted:    #6E7681;
 
-  /* ── Sidebar ─────────────────────────────────────────────── */
-  .sidebar{
-    border-right:1px solid var(--border);
-    display:flex; flex-direction:column;
-    overflow:hidden;
-  }
-  .dropzone{
-    margin:18px; padding:22px 16px;
-    border:1.5px dashed var(--border);
-    border-radius:12px;
-    text-align:center;
-    cursor:pointer;
-    transition:border-color .15s ease, background .15s ease;
-  }
-  .dropzone:hover, .dropzone.drag{
-    border-color:var(--amber);
-    background:rgba(245,166,35,0.05);
-  }
-  .dropzone svg{width:26px; height:26px; color:var(--text-faint); margin-bottom:10px;}
-  .dropzone p{font-size:13px; color:var(--text-muted);}
-  .dropzone .hint{font-size:11px; color:var(--text-faint); margin-top:4px; font-family:var(--font-mono);}
-  .dropzone input{display:none;}
+  /* Semantic accents */
+  --green:         #3FB950;
+  --green-dim:     rgba(63,185,80,0.12);
+  --green-border:  rgba(63,185,80,0.30);
+  --amber:         #E3A008;
+  --amber-dim:     rgba(227,160,8,0.12);
+  --amber-border:  rgba(227,160,8,0.30);
+  --red:           #F85149;
+  --red-dim:       rgba(248,81,73,0.12);
+  --red-border:    rgba(248,81,73,0.30);
+  --blue:          #58A6FF;
+  --blue-dim:      rgba(88,166,255,0.12);
+  --blue-border:   rgba(88,166,255,0.30);
 
-  .queue-head{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:0 18px 10px 18px;
-  }
-  .queue-head h2{
-    font-family:var(--font-mono); font-size:11px; text-transform:uppercase;
-    letter-spacing:0.08em; color:var(--text-faint); font-weight:500;
-  }
-  .queue-count{
-    font-family:var(--font-mono); font-size:11px; color:var(--text-muted);
-    background:var(--panel-raised); border:1px solid var(--border);
-    border-radius:20px; padding:1px 8px;
-  }
-  .queue{
-    flex:1; overflow-y:auto; padding:0 12px 18px 12px;
-    display:flex; flex-direction:column; gap:6px;
-  }
-  .queue::-webkit-scrollbar{width:6px;}
-  .queue::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px;}
+  /* Brand */
+  --brand:         #F0A935;
 
-  .empty-state{
-    color:var(--text-faint); font-size:12.5px; text-align:center;
-    padding:30px 20px; line-height:1.6;
-  }
+  /* Shadows */
+  --shadow-sm:     0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md:     0 4px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3);
+  --shadow-lg:     0 10px 28px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.3);
 
-  .ticket{
-    display:flex; align-items:center; gap:10px;
-    padding:9px 10px;
-    border-radius:9px;
-    border:1px solid transparent;
-    cursor:pointer;
-    transition:background .12s ease, border-color .12s ease;
-  }
-  .ticket:hover{background:var(--panel-raised);}
-  .ticket.active{background:var(--panel-raised); border-color:var(--border);}
-  .ticket-thumb{
-    width:38px; height:38px; border-radius:6px; flex-shrink:0;
-    background:#0f1113; object-fit:cover;
-    border:1px solid var(--border);
-  }
-  .ticket-body{flex:1; min-width:0;}
-  .ticket-id{
-    font-family:var(--font-mono); font-size:11.5px; color:var(--text);
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  }
-  .ticket-meta{display:flex; align-items:center; gap:6px; margin-top:2px;}
-  .status-chip{
-    font-family:var(--font-mono); font-size:9.5px; text-transform:uppercase;
-    letter-spacing:0.05em; padding:1.5px 6px; border-radius:20px;
-    border:1px solid; line-height:1.5;
-  }
-  .status-chip.pending{color:var(--text-muted); border-color:var(--border); background:var(--panel-raised);}
-  .status-chip.processing{color:var(--amber); border-color:rgba(245,166,35,0.35); background:rgba(245,166,35,0.08);}
-  .status-chip.completed{color:var(--green); border-color:rgba(74,222,128,0.35); background:rgba(74,222,128,0.08);}
-  .status-chip.failed{color:var(--red); border-color:rgba(229,89,94,0.35); background:rgba(229,89,94,0.08);}
-  .issue-count{font-size:10px; color:var(--text-faint); font-family:var(--font-mono);}
+  /* Typography */
+  --font-display:  'Space Grotesk', sans-serif;
+  --font-body:     'Inter', sans-serif;
+  --font-mono:     'JetBrains Mono', monospace;
 
-  /* ── Main panel ──────────────────────────────────────────── */
-  .main{ overflow-y:auto; padding:28px 32px 60px 32px; }
-  .main::-webkit-scrollbar{width:8px;}
-  .main::-webkit-scrollbar-thumb{background:var(--border); border-radius:4px;}
+  /* Radii */
+  --r-sm:  6px;
+  --r-md:  10px;
+  --r-lg:  14px;
+  --r-xl:  18px;
+}
 
-  .placeholder{
-    height:100%; min-height:400px;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    color:var(--text-faint); text-align:center; gap:10px;
+/* ═══════════════════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
   }
-  .placeholder svg{width:36px; height:36px; opacity:0.5;}
-  .placeholder p{font-size:13.5px; max-width:280px; line-height:1.6;}
+}
 
-  .detail-head{display:flex; gap:20px; align-items:flex-start; margin-bottom:26px;}
-  .detail-image-wrap{
-    width:180px; height:180px; border-radius:12px; overflow:hidden;
-    border:1px solid var(--border); background:#0f1113; flex-shrink:0;
-    position:relative;
-  }
-  .detail-image-wrap img{width:100%; height:100%; object-fit:cover; display:block;}
-  .scan-line{
-    position:absolute; left:0; right:0; height:2px;
-    background:linear-gradient(90deg, transparent, var(--amber), transparent);
-    box-shadow:0 0 8px 1px rgba(245,166,35,0.7);
-    animation:sweep 1.8s ease-in-out infinite;
-  }
-  @keyframes sweep{
-    0%{ top:0%; opacity:0; }
-    10%{ opacity:1; }
-    90%{ opacity:1; }
-    100%{ top:100%; opacity:0; }
-  }
+/* ═══════════════════════════════════════════════════════════
+   TOPBAR
+═══════════════════════════════════════════════════════════ */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 60px;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  z-index: 10;
+}
 
-  .detail-info{flex:1; min-width:0; padding-top:2px;}
-  .detail-eyebrow{
-    font-family:var(--font-mono); font-size:11px; color:var(--text-faint);
-    text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;
-  }
-  .detail-title{font-family:var(--font-display); font-size:19px; font-weight:600; word-break:break-word;}
-  .detail-status-row{display:flex; align-items:center; gap:10px; margin-top:12px;}
-  .detail-meta-grid{
-    display:grid; grid-template-columns:repeat(3, auto); gap:20px;
-    margin-top:16px;
-  }
-  .meta-item .k{font-size:10.5px; color:var(--text-faint); font-family:var(--font-mono); text-transform:uppercase; letter-spacing:0.05em;}
-  .meta-item .v{font-size:12.5px; color:var(--text-muted); font-family:var(--font-mono); margin-top:3px;}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--brand) 0%, #c47d10 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-weight: 700; font-size: 13px;
+  color: #1a0e00;
+  box-shadow: 0 2px 8px rgba(240,169,53,0.35);
+  flex-shrink: 0;
+}
+.brand-text h1 {
+  font-family: var(--font-display);
+  font-size: 15px; font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+.brand-text p {
+  font-size: 11px; font-family: var(--font-mono);
+  color: var(--text-muted);
+  margin-top: 1px;
+  letter-spacing: 0.02em;
+}
 
-  .fail-banner{
-    margin-top:14px; padding:10px 14px; border-radius:8px;
-    background:rgba(229,89,94,0.08); border:1px solid rgba(229,89,94,0.3);
-    color:var(--red); font-size:12.5px; font-family:var(--font-mono);
-  }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
 
-  .section-label{
-    font-family:var(--font-mono); font-size:11px; text-transform:uppercase;
-    letter-spacing:0.08em; color:var(--text-faint); margin:8px 0 14px 0;
-  }
+.conn-field {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 6px 12px;
+  transition: border-color .15s;
+}
+.conn-field:focus-within { border-color: var(--blue); }
+.conn-field label {
+  font-size: 10px; font-family: var(--font-mono);
+  color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+.conn-field input {
+  background: transparent; border: none; outline: none;
+  color: var(--text); font-family: var(--font-mono);
+  font-size: 12px; width: 180px;
+}
 
-  /* ── Inspection tag cards ────────────────────────────────── */
-  .tags{
-    display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));
-    gap:14px;
-  }
-  .tag{
-    position:relative;
-    background:var(--panel);
-    border:1px solid var(--border);
-    border-radius:10px;
-    padding:16px 16px 14px 16px;
-    overflow:hidden;
-  }
-  .tag::before{
-    content:"";
-    position:absolute; top:0; left:0; right:0; height:3px;
-  }
-  .tag.pass::before{background:var(--green);}
-  .tag.fail::before{background:var(--amber);}
-  .tag.error::before{background:var(--red);}
-  .tag-top{display:flex; align-items:flex-start; justify-content:space-between; gap:8px;}
-  .tag-name{font-family:var(--font-display); font-size:13.5px; font-weight:600;}
-  .stamp{
-    font-family:var(--font-mono); font-size:9.5px; font-weight:600;
-    letter-spacing:0.08em; padding:3px 8px; border-radius:5px;
-    border:1.5px solid; transform:rotate(2deg); flex-shrink:0;
-  }
-  .tag.pass .stamp{color:var(--green); border-color:var(--green);}
-  .tag.fail .stamp{color:var(--amber); border-color:var(--amber);}
-  .tag.error .stamp{color:var(--red); border-color:var(--red);}
+.status-indicator {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 11px; font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--text-muted); flex-shrink: 0;
+  transition: background .3s, box-shadow .3s;
+}
+.dot.ok  { background: var(--green); box-shadow: 0 0 6px rgba(63,185,80,0.6); }
+.dot.bad { background: var(--red);   box-shadow: 0 0 6px rgba(248,81,73,0.5); }
 
-  .tag-score-row{display:flex; align-items:center; gap:8px; margin-top:12px;}
-  .score-bar{flex:1; height:5px; border-radius:3px; background:var(--panel-raised); overflow:hidden;}
-  .score-fill{height:100%; border-radius:3px;}
-  .tag.pass .score-fill{background:var(--green);}
-  .tag.fail .score-fill{background:var(--amber);}
-  .tag.error .score-fill{background:var(--red);}
-  .score-num{font-family:var(--font-mono); font-size:11.5px; color:var(--text-muted); width:34px; text-align:right;}
+/* ═══════════════════════════════════════════════════════════
+   LAYOUT SHELL
+═══════════════════════════════════════════════════════════ */
+.shell {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: calc(100vh - 60px);
+  overflow: hidden;
+}
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; height: auto; overflow: visible; }
+}
 
-  .tag-detail{
-    margin-top:11px; font-size:12px; color:var(--text-muted); line-height:1.55;
-  }
-  .tag-raw{
-    margin-top:10px; padding-top:10px; border-top:1px dashed var(--border);
-    font-family:var(--font-mono); font-size:10.5px; color:var(--text-faint);
-    word-break:break-all;
-  }
+/* ═══════════════════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════════════════ */
+.sidebar {
+  background: var(--surface-1);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
 
-  /* ── Issues summary banner ───────────────────────────────── */
-  .issues-banner{
-    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-    margin-bottom:18px; padding:12px 16px; border-radius:9px;
-    background:rgba(245,166,35,0.06); border:1px solid rgba(245,166,35,0.2);
-  }
-  .issues-banner.clean{
-    background:rgba(74,222,128,0.05); border-color:rgba(74,222,128,0.2);
-  }
-  .issues-banner .ib-label{
-    font-family:var(--font-mono); font-size:11px; font-weight:600;
-    text-transform:uppercase; letter-spacing:0.06em;
-  }
-  .issues-banner.clean .ib-label{color:var(--green);}
-  .issues-banner:not(.clean) .ib-label{color:var(--amber);}
-  .issue-pill{
-    font-family:var(--font-mono); font-size:10px;
-    padding:2px 8px; border-radius:20px;
-    background:rgba(229,89,94,0.12); border:1px solid rgba(229,89,94,0.35);
-    color:var(--red);
-  }
+/* Drop zone */
+.dropzone {
+  margin: 16px;
+  padding: 24px 16px 20px;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--r-lg);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+  position: relative;
+  overflow: hidden;
+}
+.dropzone::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(240,169,53,0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+.dropzone:hover, .dropzone.drag {
+  border-color: var(--brand);
+  background: rgba(240,169,53,0.04);
+  box-shadow: 0 0 0 3px rgba(240,169,53,0.08);
+}
+.dropzone input { display: none; }
+.dz-icon {
+  width: 36px; height: 36px; margin: 0 auto 12px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+  transition: border-color .2s, color .2s;
+}
+.dropzone:hover .dz-icon, .dropzone.drag .dz-icon {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+.dz-icon svg { width: 18px; height: 18px; }
+.dropzone p { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+.dropzone .hint {
+  font-size: 11px; font-family: var(--font-mono);
+  color: var(--text-muted); margin-top: 4px;
+}
 
-  .toast{
-    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(12px);
-    background:var(--panel-raised); border:1px solid var(--border);
-    color:var(--text); font-size:12.5px; padding:10px 16px; border-radius:9px;
-    opacity:0; pointer-events:none; transition:opacity .2s ease, transform .2s ease;
-    font-family:var(--font-mono); z-index:50;
-  }
-  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
-  .toast.err{border-color:rgba(229,89,94,0.4); color:var(--red);}
+/* Queue header */
+.queue-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px 10px;
+}
+.queue-head h2 {
+  font-family: var(--font-mono); font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-muted); font-weight: 600;
+}
+.queue-count {
+  font-family: var(--font-mono); font-size: 10.5px;
+  color: var(--text-secondary);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: 20px; padding: 1px 8px;
+  min-width: 22px; text-align: center;
+}
+
+/* Queue list */
+.queue {
+  flex: 1; overflow-y: auto;
+  padding: 0 10px 16px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.queue::-webkit-scrollbar { width: 5px; }
+.queue::-webkit-scrollbar-track { background: transparent; }
+.queue::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.empty-state {
+  color: var(--text-muted); font-size: 12.5px;
+  text-align: center; padding: 32px 20px;
+  line-height: 1.7;
+}
+
+/* Ticket */
+.ticket {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+  outline: none;
+}
+.ticket:hover  { background: var(--surface-2); }
+.ticket:focus-visible { box-shadow: 0 0 0 2px var(--blue); }
+.ticket.active {
+  background: var(--surface-3);
+  border-color: var(--border);
+}
+.ticket-thumb {
+  width: 40px; height: 40px; border-radius: var(--r-sm);
+  object-fit: cover; flex-shrink: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.ticket-body { flex: 1; min-width: 0; }
+.ticket-id {
+  font-size: 12px; font-weight: 500;
+  color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ticket-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+.issue-count {
+  font-size: 10.5px; color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* Status chips (sidebar tickets) */
+.status-chip {
+  font-family: var(--font-mono); font-size: 9px;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  padding: 2px 7px; border-radius: 20px;
+  border: 1px solid; line-height: 1.6; font-weight: 600;
+}
+.status-chip.pending    { color: var(--text-muted);    border-color: var(--border);       background: var(--surface-3); }
+.status-chip.processing { color: var(--blue);          border-color: var(--blue-border);  background: var(--blue-dim); }
+.status-chip.completed  { color: var(--green);         border-color: var(--green-border); background: var(--green-dim); }
+.status-chip.failed     { color: var(--red);           border-color: var(--red-border);   background: var(--red-dim); }
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN CONTENT PANEL
+═══════════════════════════════════════════════════════════ */
+.main {
+  overflow-y: auto;
+  padding: 28px 32px 64px;
+  background: var(--bg);
+}
+.main::-webkit-scrollbar { width: 7px; }
+.main::-webkit-scrollbar-track { background: transparent; }
+.main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* Empty placeholder */
+.placeholder {
+  height: 100%; min-height: 400px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  color: var(--text-muted); text-align: center; gap: 14px;
+}
+.placeholder-icon {
+  width: 56px; height: 56px; border-radius: 14px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+}
+.placeholder-icon svg { width: 26px; height: 26px; opacity: 0.6; }
+.placeholder h3 { font-size: 15px; font-weight: 600; color: var(--text-secondary); }
+.placeholder p  { font-size: 13px; color: var(--text-muted); max-width: 300px; line-height: 1.7; }
+
+/* ═══════════════════════════════════════════════════════════
+   DETAIL — IMAGE HEADER CARD
+═══════════════════════════════════════════════════════════ */
+.detail-header-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 24px;
+  display: flex; gap: 22px; align-items: flex-start;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+}
+@media (max-width: 600px) { .detail-header-card { flex-direction: column; } }
+
+.detail-image-wrap {
+  width: 160px; height: 160px;
+  border-radius: var(--r-lg); overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  flex-shrink: 0; position: relative;
+}
+.detail-image-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Scanning animation for processing state */
+.scan-line {
+  position: absolute; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--brand) 50%, transparent 100%);
+  box-shadow: 0 0 10px 2px rgba(240,169,53,0.6);
+  animation: sweep 1.8s ease-in-out infinite;
+}
+@keyframes sweep {
+  0%   { top: 0%;   opacity: 0; }
+  8%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.detail-info { flex: 1; min-width: 0; padding-top: 2px; }
+
+.detail-eyebrow {
+  font-family: var(--font-mono); font-size: 10.5px;
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.1em; margin-bottom: 6px;
+}
+.detail-title {
+  font-family: var(--font-display);
+  font-size: 20px; font-weight: 700;
+  color: var(--text); word-break: break-word;
+  line-height: 1.3; margin-bottom: 12px;
+}
+.detail-status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+
+/* Meta grid */
+.detail-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 20px 28px;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+}
+.meta-item .k {
+  font-size: 10px; font-family: var(--font-mono);
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.08em; margin-bottom: 4px;
+}
+.meta-item .v {
+  font-size: 13px; font-weight: 600;
+  color: var(--text-secondary); font-family: var(--font-mono);
+}
+
+/* Failure banner */
+.fail-banner {
+  margin-top: 14px; padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--red-dim);
+  border: 1px solid var(--red-border);
+  color: var(--red); font-size: 12.5px;
+  font-family: var(--font-mono); line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   OVERALL SUMMARY CARD
+═══════════════════════════════════════════════════════════ */
+.summary-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 22px 24px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+.summary-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.summary-card.verdict-passed::before  { background: linear-gradient(90deg, var(--green), #2ea043); }
+.summary-card.verdict-review::before  { background: linear-gradient(90deg, var(--amber), #b8820a); }
+.summary-card.verdict-failed::before  { background: linear-gradient(90deg, var(--red),   #c0392b); }
+
+.summary-top {
+  display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 16px;
+  margin-bottom: 16px;
+}
+.summary-label-group {}
+.summary-eyebrow {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.1em; margin-bottom: 4px;
+}
+.summary-title {
+  font-family: var(--font-display);
+  font-size: 16px; font-weight: 700; color: var(--text);
+}
+.verdict-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-family: var(--font-display); font-size: 13px; font-weight: 700;
+  border: 1.5px solid; flex-shrink: 0;
+}
+.verdict-badge.passed       { color: var(--green); border-color: var(--green-border); background: var(--green-dim); }
+.verdict-badge.review       { color: var(--amber); border-color: var(--amber-border); background: var(--amber-dim); }
+.verdict-badge.failed-state { color: var(--red);   border-color: var(--red-border);   background: var(--red-dim); }
+.verdict-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.summary-meta-row {
+  display: flex; gap: 24px; margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+.summary-meta-item .sm-key {
+  font-size: 10px; font-family: var(--font-mono);
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.08em; margin-bottom: 3px;
+}
+.summary-meta-item .sm-val {
+  font-size: 13px; font-weight: 600; font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+.sm-val.green  { color: var(--green); }
+.sm-val.amber  { color: var(--amber); }
+.sm-val.red    { color: var(--red); }
+
+/* Finding pills */
+.findings-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.findings-label {
+  font-size: 10.5px; font-family: var(--font-mono);
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.finding-pill {
+  font-family: var(--font-mono); font-size: 10.5px;
+  padding: 3px 10px; border-radius: 20px;
+  background: var(--amber-dim);
+  border: 1px solid var(--amber-border);
+  color: var(--amber); font-weight: 500;
+}
+
+/* Recommendation paragraph */
+.recommendation {
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  font-size: 13px; color: var(--text-secondary);
+  line-height: 1.7;
+}
+.recommendation strong { color: var(--text); font-weight: 600; }
+
+/* ═══════════════════════════════════════════════════════════
+   SECTION HEADER
+═══════════════════════════════════════════════════════════ */
+.section-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 14px;
+}
+.section-header h3 {
+  font-family: var(--font-mono); font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-muted); font-weight: 600;
+}
+.section-header-line {
+  flex: 1; height: 1px;
+  background: var(--border-subtle);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CHECK CARDS (replaces .tag / .stamp / .tag-raw)
+═══════════════════════════════════════════════════════════ */
+.checks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.check-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow .2s, border-color .2s;
+  display: flex; flex-direction: column;
+}
+.check-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--surface-4);
+}
+
+/* Coloured accent bar */
+.check-card-bar { height: 3px; }
+.check-card.pass  .check-card-bar { background: linear-gradient(90deg, var(--green), #2ea043); }
+.check-card.fail  .check-card-bar { background: linear-gradient(90deg, var(--amber), #b8820a); }
+.check-card.error .check-card-bar { background: linear-gradient(90deg, var(--red),   #c0392b); }
+
+.check-card-body { padding: 16px 18px; flex: 1; display: flex; flex-direction: column; gap: 12px; }
+
+/* Check header row */
+.check-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.check-name-group {}
+.check-icon-name {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+}
+.check-icon {
+  width: 28px; height: 28px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.check-card.pass  .check-icon { background: var(--green-dim); color: var(--green); }
+.check-card.fail  .check-icon { background: var(--amber-dim); color: var(--amber); }
+.check-card.error .check-icon { background: var(--red-dim);   color: var(--red); }
+.check-icon svg { width: 14px; height: 14px; }
+
+.check-name {
+  font-family: var(--font-display);
+  font-size: 14px; font-weight: 700; color: var(--text);
+}
+
+/* Result badge */
+.result-badge {
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 700;
+  letter-spacing: 0.07em; padding: 4px 10px;
+  border-radius: 20px; border: 1.5px solid;
+  flex-shrink: 0; white-space: nowrap;
+}
+.check-card.pass  .result-badge { color: var(--green); border-color: var(--green-border); background: var(--green-dim); }
+.check-card.fail  .result-badge { color: var(--amber); border-color: var(--amber-border); background: var(--amber-dim); }
+.check-card.error .result-badge { color: var(--red);   border-color: var(--red-border);   background: var(--red-dim); }
+
+/* Score bar */
+.score-row { display: flex; align-items: center; gap: 10px; }
+.score-bar-wrap { flex: 1; height: 5px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.score-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+.check-card.pass  .score-fill { background: var(--green); }
+.check-card.fail  .score-fill { background: var(--amber); }
+.check-card.error .score-fill { background: var(--red); }
+.score-value {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--text-secondary); width: 36px; text-align: right;
+  flex-shrink: 0;
+}
+
+/* Summary sentence */
+.check-summary {
+  font-size: 12.5px; color: var(--text-secondary);
+  line-height: 1.6;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+  border-left: 3px solid;
+}
+.check-card.pass  .check-summary { border-color: var(--green); }
+.check-card.fail  .check-summary { border-color: var(--amber); }
+.check-card.error .check-summary { border-color: var(--red); }
+
+/* Technical details */
+.tech-section-label {
+  font-family: var(--font-mono); font-size: 9.5px;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-muted); margin-bottom: 8px; font-weight: 600;
+}
+.tech-grid {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.tech-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 8px;
+  padding: 5px 10px;
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+}
+.tech-key {
+  font-size: 11.5px; color: var(--text-muted);
+  flex-shrink: 0;
+}
+.tech-val {
+  font-family: var(--font-mono); font-size: 11.5px;
+  color: var(--text-secondary); text-align: right;
+  word-break: break-all; font-weight: 500;
+}
+.tech-val.green { color: var(--green); }
+.tech-val.amber { color: var(--amber); }
+.tech-val.red   { color: var(--red); }
+.tech-val.blue  { color: var(--blue); }
+
+/* OCR text box */
+.ocr-text-box {
+  font-family: var(--font-mono); font-size: 12px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--text); line-height: 1.5;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+.ocr-highlight {
+  display: inline-block;
+  background: rgba(240,169,53,0.2);
+  border: 1px solid rgba(240,169,53,0.4);
+  border-radius: 4px; padding: 1px 6px;
+  color: var(--brand); font-weight: 700;
+}
+
+/* OCR reasons list */
+.ocr-reasons { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.ocr-reasons li {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12px; color: var(--text-muted);
+}
+.ocr-reasons li::before {
+  content: '';
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--amber); flex-shrink: 0;
+}
+
+/* Processing state */
+.processing-state {
+  padding: 28px 24px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  text-align: center;
+}
+.processing-pulse {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--blue-dim); border: 2px solid var(--blue-border);
+  margin: 0 auto 14px;
+  display: flex; align-items: center; justify-content: center;
+  animation: pulse 1.8s ease-in-out infinite;
+}
+.processing-pulse svg { width: 18px; height: 18px; color: var(--blue); }
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.1); opacity: 0.7; }
+}
+.processing-state h4 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.processing-state p  { font-size: 12.5px; color: var(--text-muted); line-height: 1.6; }
+
+/* ═══════════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════════ */
+.toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  color: var(--text); font-size: 12.5px;
+  padding: 10px 18px; border-radius: 20px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .22s ease, transform .22s ease;
+  font-family: var(--font-mono); z-index: 100;
+  box-shadow: var(--shadow-md);
+  display: flex; align-items: center; gap: 8px;
+  max-width: 380px; text-align: center;
+}
+.toast.show  { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.err   { border-color: var(--red-border); color: var(--red); background: var(--red-dim); }
 </style>
 </head>
 <body>
 
-<div class="topbar">
+<!-- ═══ TOP BAR ══════════════════════════════════════════════════════════ -->
+<header class="topbar">
   <div class="brand">
     <div class="brand-mark">IM</div>
     <div class="brand-text">
@@ -303,75 +745,113 @@
       <p>vehicle image inspection pipeline</p>
     </div>
   </div>
-  <div class="conn">
+  <div class="topbar-right">
     <div class="conn-field">
-      <label>api</label>
+      <label for="apiBase">API</label>
       <input id="apiBase" value="" spellcheck="false" placeholder="http://localhost:8000">
     </div>
-    <span class="dot" id="connDot" title="connection status"></span>
+    <div class="status-indicator">
+      <span class="dot" id="connDot" title="API connection status"></span>
+      <span id="connLabel">Connecting</span>
+    </div>
   </div>
-</div>
+</header>
 
+<!-- ═══ SHELL ════════════════════════════════════════════════════════════ -->
 <div class="shell">
+
+  <!-- ── SIDEBAR ──────────────────────────────────────────────────────── -->
   <aside class="sidebar">
+
+    <!-- Drop zone -->
     <div class="dropzone" id="dropzone">
       <input type="file" id="fileInput" accept="image/*" aria-label="Upload vehicle image">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <p>Drop a vehicle photo, or click to browse</p>
+      <div class="dz-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <p>Drop a vehicle photo or click to browse</p>
       <div class="hint">JPG · PNG · WebP · up to 10 MB</div>
     </div>
 
+    <!-- Queue -->
     <div class="queue-head">
-      <h2>Queue</h2>
+      <h2>Uploaded Images</h2>
       <span class="queue-count" id="queueCount">0</span>
     </div>
     <div class="queue" id="queue">
-      <div class="empty-state">Nothing uploaded yet. Once you add an image it'll show up here and update live as it's processed.</div>
+      <div class="empty-state">No images uploaded yet. Drop a vehicle photo above to begin inspection.</div>
     </div>
+
   </aside>
 
+  <!-- ── MAIN ─────────────────────────────────────────────────────────── -->
   <main class="main" id="main">
     <div class="placeholder">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>
-      <p>Select an image from the queue to see its inspection results here.</p>
+      <div class="placeholder-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="3"/>
+          <circle cx="9" cy="9" r="2"/>
+          <path d="M21 15l-5-5L5 21"/>
+        </svg>
+      </div>
+      <h3>No image selected</h3>
+      <p>Select an image from the list to view its full inspection report.</p>
     </div>
   </main>
+
 </div>
 
+<!-- ═══ TOAST ════════════════════════════════════════════════════════════ -->
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
-// ── Helpers ──────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════════════
+   HELPER
+════════════════════════════════════════════════════════════════════════ */
 const $ = sel => document.querySelector(sel);
 
-// ── State ────────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════════════════════════════════ */
 const state = {
-  images: {},     // id -> {id, filename, thumb, status, failure_reason, results}
-  order: [],      // ids in upload order (most recent first)
+  images:  {},   // id -> {id, filename, thumb, status, failure_reason, results}
+  order:   [],   // ids in upload order (most recent first)
   selectedId: null,
-  pollers: {}     // id -> interval handle
+  pollers: {}    // id -> interval handle
 };
 
-// ── API base: auto-detect when served from FastAPI, otherwise configurable ───
+/* ════════════════════════════════════════════════════════════════════════
+   API BASE — auto-detects same-origin when served by FastAPI
+════════════════════════════════════════════════════════════════════════ */
 const apiBaseInput = $('#apiBase');
-const connDot = $('#connDot');
+const connDot      = $('#connDot');
 
 function apiBase() {
   const v = apiBaseInput.value.trim().replace(/\/$/, '');
-  return v || window.location.origin;   // if blank, same origin (served by FastAPI)
+  return v || window.location.origin;
 }
 
-// ── Connection health check ──────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════════════
+   HEALTH CHECK
+════════════════════════════════════════════════════════════════════════ */
 async function checkHealth() {
   try {
     const r = await fetch(apiBase() + '/health', { signal: AbortSignal.timeout(3000) });
     connDot.className = 'dot ' + (r.ok ? 'ok' : 'bad');
+    if ($('#connLabel')) $('#connLabel').textContent = r.ok ? 'Connected' : 'Error';
   } catch (e) {
     connDot.className = 'dot bad';
+    if ($('#connLabel')) $('#connLabel').textContent = 'Offline';
   }
 }
 
-// ── Toast ────────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════════════
+   TOAST
+════════════════════════════════════════════════════════════════════════ */
 function showToast(msg, isErr) {
   const t = $('#toast');
   t.textContent = msg;
@@ -381,7 +861,9 @@ function showToast(msg, isErr) {
   t._timer = setTimeout(() => t.classList.remove('show'), 3200);
 }
 
-// ── Upload ───────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════════════
+   UPLOAD — all original logic preserved verbatim
+════════════════════════════════════════════════════════════════════════ */
 const dropzone = $('#dropzone');
 const fileInput = $('#fileInput');
 
@@ -448,7 +930,9 @@ async function uploadFile(file) {
   }
 }
 
-// ── Polling ──────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════════════
+   POLLING — original logic preserved verbatim
+════════════════════════════════════════════════════════════════════════ */
 function pollStatus(id) {
   if (state.pollers[id]) return;
   state.pollers[id] = setInterval(async () => {
@@ -464,7 +948,6 @@ function pollStatus(id) {
       if (data.status === 'completed') {
         clearInterval(state.pollers[id]);
         delete state.pollers[id];
-        // Fetch full results
         const rr = await fetch(apiBase() + '/images/' + id + '/results');
         if (rr.ok) img.results = await rr.json();
         const issueCount = img.results ? (img.results.issues_found || []).length : 0;
@@ -480,12 +963,14 @@ function pollStatus(id) {
   }, 1500);
 }
 
-// ── Queue render ─────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════════════
+   QUEUE RENDER — original logic preserved verbatim, label updated
+════════════════════════════════════════════════════════════════════════ */
 function renderQueue() {
   const q = $('#queue');
   $('#queueCount').textContent = state.order.length;
   if (state.order.length === 0) {
-    q.innerHTML = '<div class="empty-state">Nothing uploaded yet. Once you add an image it\'ll show up here and update live as it\'s processed.</div>';
+    q.innerHTML = '<div class="empty-state">No images uploaded yet. Drop a vehicle photo above to begin inspection.</div>';
     return;
   }
   q.innerHTML = '';
@@ -502,7 +987,7 @@ function renderQueue() {
         <div class="ticket-id">${escHtml(img.filename)}</div>
         <div class="ticket-meta">
           <span class="status-chip ${img.status}">${img.status}</span>
-          ${issues !== null ? `<span class="issue-count">${issues} issue${issues === 1 ? '' : 's'}</span>` : ''}
+          ${issues !== null ? `<span class="issue-count">${issues} finding${issues === 1 ? '' : 's'}</span>` : ''}
         </div>
       </div>
     `;
@@ -512,13 +997,18 @@ function renderQueue() {
   });
 }
 
-// ── Detail render ─────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════════════
+   SELECT IMAGE — preserved verbatim
+════════════════════════════════════════════════════════════════════════ */
 function selectImage(id) {
   state.selectedId = id;
   renderQueue();
   renderDetail(id);
 }
 
+/* ════════════════════════════════════════════════════════════════════════
+   SECURITY — escHtml preserved verbatim; all API data goes through it
+════════════════════════════════════════════════════════════════════════ */
 function escHtml(s) {
   return String(s)
     .replace(/&/g, '&amp;')
@@ -527,161 +1017,426 @@ function escHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
+/* ════════════════════════════════════════════════════════════════════════
+   CHECK VISUAL — preserved verbatim
+════════════════════════════════════════════════════════════════════════ */
 function checkVisual(check) {
   if (check.details && check.details.verdict === 'check_error') return 'error';
   return check.passed ? 'pass' : 'fail';
 }
 
-/**
- * Build a human-readable one-liner from a check's details dict.
- * The backend stores structured dicts — we pick the most useful field.
- */
-function humanDetail(check) {
-  const d = check.details || {};
-  const name = check.check_name;
-
-  if (d.verdict === 'check_error') return `Check error: ${d.error || 'unknown'}`;
-
-  if (name === 'blur') {
-    return d.laplacian_variance !== undefined
-      ? `Laplacian variance: ${Number(d.laplacian_variance).toFixed(1)} (threshold ${d.threshold})`
-      : '';
-  }
-  if (name === 'brightness') {
-    return d.mean_intensity !== undefined
-      ? `Mean intensity: ${Number(d.mean_intensity).toFixed(1)} — ${(d.verdict || '').replace(/_/g, ' ')}`
-      : '';
-  }
-  if (name === 'duplicate') {
-    return d.hamming_distance !== undefined
-      ? `Hamming distance: ${d.hamming_distance} (threshold ≤${d.hamming_threshold}) · compared ${d.compared_against ?? '?'} images`
-      : '';
-  }
-  if (name === 'screenshot') {
-    const parts = [];
-    if (d.has_camera_exif !== undefined) parts.push(d.has_camera_exif ? 'has EXIF' : 'no EXIF');
-    if (d.matched_screen_ratio) parts.push(`matches ${d.matched_screen_ratio} ratio`);
-    if (d.image_dimensions) parts.push(`${d.image_dimensions.width}×${d.image_dimensions.height}`);
-    return parts.join(' · ');
-  }
-  if (name === 'plate_ocr') {
-    if (d.matched_plate) return `Plate detected: ${d.matched_plate}`;
-    if (d.verdict === 'no_text_extracted') return 'No text found in image';
-    if (d.raw_ocr_text) return `Text found but no plate match — saw: "${d.raw_ocr_text.trim().slice(0, 60)}"`;
-    return d.verdict ? d.verdict.replace(/_/g, ' ') : '';
-  }
-  return d.verdict ? d.verdict.replace(/_/g, ' ') : '';
+/* ════════════════════════════════════════════════════════════════════════
+   OVERALL VERDICT DERIVATION
+   Rule (UI-only — no backend field is invented):
+     • Every check passed → "Passed"
+     • One or more checks failed / flagged → "Manual Review Recommended"
+   "Rejected" is never shown unless the backend explicitly returns that state.
+   No additional scoring logic is introduced beyond what the backend provides.
+════════════════════════════════════════════════════════════════════════ */
+function deriveVerdict(checks) {
+  const allPassed = checks.every(c => c.passed === true);
+  return allPassed ? 'passed' : 'review';
 }
 
+/* ════════════════════════════════════════════════════════════════════════
+   RECOMMENDATION — generated only from actual backend results, no fabrication
+════════════════════════════════════════════════════════════════════════ */
+function buildRecommendation(checks, issues) {
+  const total  = checks.length;
+  const failed = checks.filter(c => !c.passed);
+
+  if (failed.length === 0) {
+    return `All <strong>${total} quality and authenticity checks</strong> passed successfully. The image meets the required standards and is suitable for further processing.`;
+  }
+
+  const failedNames = failed.map(c => {
+    const nameMap = {
+      blur: 'Blur Detection', brightness: 'Brightness', duplicate: 'Duplicate Detection',
+      screenshot: 'Screenshot Detection', plate_ocr: 'Vehicle Plate OCR'
+    };
+    return nameMap[c.check_name] || c.check_name.replace(/_/g, ' ');
+  });
+
+  const nameList = failedNames.map(n => `<strong>${escHtml(n)}</strong>`).join(', ');
+  return `${failed.length} of ${total} checks require attention: ${nameList}. Manual review is recommended before this image is accepted for processing.`;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   OVERALL SUMMARY CARD
+════════════════════════════════════════════════════════════════════════ */
+function buildSummaryCard(checks, issues) {
+  const verdict = deriveVerdict(checks);
+  const passed  = checks.filter(c => c.passed).length;
+  const total   = checks.length;
+
+  let verdictLabel, verdictClass, cardClass, dotColor;
+  if (verdict === 'passed') {
+    verdictLabel = 'Passed'; verdictClass = 'passed'; cardClass = 'verdict-passed';
+  } else {
+    verdictLabel = 'Manual Review Recommended'; verdictClass = 'review'; cardClass = 'verdict-review';
+  }
+
+  const passedVal   = verdict === 'passed' ? 'green' : 'amber';
+  const findingsHtml = issues.length > 0
+    ? `<div class="findings-row">
+         <span class="findings-label">Inspection Findings:</span>
+         ${issues.map(n => `<span class="finding-pill">${escHtml(n.replace(/_/g, ' '))}</span>`).join('')}
+       </div>`
+    : '';
+
+  const rec = buildRecommendation(checks, issues);
+
+  return `
+    <div class="summary-card ${cardClass}">
+      <div class="summary-top">
+        <div class="summary-label-group">
+          <div class="summary-eyebrow">Overall Inspection Summary</div>
+          <div class="summary-title">Analysis Completed</div>
+        </div>
+        <div class="verdict-badge ${verdictClass}">
+          <span class="verdict-dot"></span>
+          ${escHtml(verdictLabel)}
+        </div>
+      </div>
+      <div class="summary-meta-row">
+        <div class="summary-meta-item">
+          <div class="sm-key">Checks Completed</div>
+          <div class="sm-val">${total}</div>
+        </div>
+        <div class="summary-meta-item">
+          <div class="sm-key">Passed</div>
+          <div class="sm-val ${passedVal}">${passed}</div>
+        </div>
+        <div class="summary-meta-item">
+          <div class="sm-key">Findings</div>
+          <div class="sm-val ${issues.length > 0 ? 'amber' : 'green'}">${issues.length}</div>
+        </div>
+        <div class="summary-meta-item">
+          <div class="sm-key">Overall Result</div>
+          <div class="sm-val ${verdict === 'passed' ? 'green' : 'amber'}">${escHtml(verdictLabel)}</div>
+        </div>
+      </div>
+      ${findingsHtml}
+      <div class="recommendation">${rec}</div>
+    </div>
+  `;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   CHECK ICONS (inline SVG per check type)
+════════════════════════════════════════════════════════════════════════ */
+const CHECK_ICONS = {
+  blur: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M3 12h1M20 12h1M12 3v1M12 20v1M5.6 5.6l.7.7M17.7 17.7l.7.7M17.7 6.3l-.7.7M6.3 17.7l-.7.7"/></svg>`,
+  brightness: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`,
+  duplicate: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`,
+  screenshot: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
+  plate_ocr: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h2M11 10h6M7 14h4M13 14h4"/></svg>`
+};
+
+function checkIcon(name) {
+  return CHECK_ICONS[name] || `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/></svg>`;
+}
+
+const CHECK_DISPLAY_NAMES = {
+  blur: 'Blur Detection',
+  brightness: 'Brightness',
+  duplicate: 'Duplicate Detection',
+  screenshot: 'Screenshot Detection',
+  plate_ocr: 'Vehicle Plate OCR'
+};
+
+/* ════════════════════════════════════════════════════════════════════════
+   PER-CHECK STRUCTURED CONTENT BUILDERS
+   All values come directly from c.details — nothing is fabricated.
+   If a field is absent, it is omitted entirely.
+════════════════════════════════════════════════════════════════════════ */
+
+function techRow(key, val, colorClass) {
+  if (val === undefined || val === null || val === '') return '';
+  const cls = colorClass ? ` class="tech-val ${colorClass}"` : ` class="tech-val"`;
+  return `<div class="tech-row"><span class="tech-key">${escHtml(key)}</span><span${cls}>${escHtml(String(val))}</span></div>`;
+}
+
+function buildBlurContent(c) {
+  const d = c.details || {};
+  const summary = c.passed
+    ? 'The image has sufficient sharpness for reliable analysis.'
+    : 'The image appears blurry. Sharpness is below the required threshold.';
+
+  let tech = '';
+  if (d.laplacian_variance !== undefined) tech += techRow('Laplacian Variance', Number(d.laplacian_variance).toFixed(2), c.passed ? 'green' : 'amber');
+  if (d.threshold !== undefined)          tech += techRow('Sharpness Threshold', d.threshold);
+
+  return { summary, tech };
+}
+
+function buildBrightnessContent(c) {
+  const d = c.details || {};
+  let summary = 'The image has balanced lighting suitable for analysis.';
+  if (!c.passed) {
+    const v = (d.verdict || '').toLowerCase();
+    if (v.includes('dark'))   summary = 'The image is underexposed. Insufficient lighting may reduce analysis accuracy.';
+    else if (v.includes('bright') || v.includes('overexposed')) summary = 'The image is overexposed. Excess brightness may reduce analysis accuracy.';
+    else summary = 'The image brightness falls outside the acceptable range.';
+  }
+
+  let tech = '';
+  if (d.mean_intensity !== undefined)  tech += techRow('Mean Brightness', Number(d.mean_intensity).toFixed(1), c.passed ? 'green' : 'amber');
+  if (d.min_threshold !== undefined)   tech += techRow('Min Threshold', d.min_threshold);
+  if (d.max_threshold !== undefined)   tech += techRow('Max Threshold', d.max_threshold);
+  if (d.verdict)                       tech += techRow('Verdict', d.verdict.replace(/_/g, ' '));
+
+  return { summary, tech };
+}
+
+function buildDuplicateContent(c) {
+  const d = c.details || {};
+  const summary = c.passed
+    ? 'No duplicate image was detected. This appears to be a unique submission.'
+    : 'This image closely resembles a previously submitted image. Manual verification is recommended.';
+
+  let tech = '';
+  if (d.compared_against !== undefined) tech += techRow('Images Compared', d.compared_against);
+  if (d.hamming_distance !== undefined) tech += techRow('Similarity Score (Hamming)', d.hamming_distance, c.passed ? 'green' : 'amber');
+  if (d.hamming_threshold !== undefined) tech += techRow('Similarity Threshold', `≤ ${d.hamming_threshold}`);
+  if (!c.passed && d.nearest_hash)      tech += techRow('Nearest Duplicate Hash', d.nearest_hash.slice(0, 16) + '…');
+
+  return { summary, tech };
+}
+
+function buildScreenshotContent(c) {
+  const d = c.details || {};
+  const summary = c.passed
+    ? 'The image appears to be an original photograph. No screenshot indicators were detected.'
+    : 'The image exhibits characteristics commonly associated with screenshots or screen-captured content.';
+
+  let tech = '';
+  if (d.has_camera_exif !== undefined) {
+    tech += techRow('EXIF Metadata Present', d.has_camera_exif ? 'Yes' : 'No', d.has_camera_exif ? 'green' : 'amber');
+  }
+  if (d.matched_screen_ratio) tech += techRow('Aspect Ratio Match', d.matched_screen_ratio, 'amber');
+  if (d.image_dimensions)     tech += techRow('Image Dimensions', `${d.image_dimensions.width} × ${d.image_dimensions.height}`);
+  if (d.disclaimer)           tech += techRow('Note', d.disclaimer);
+
+  return { summary, tech };
+}
+
+function buildPlateOCRContent(c) {
+  const d = c.details || {};
+  const verdict = (d.verdict || '').toLowerCase();
+
+  let summary, extraHtml = '';
+
+  if (d.matched_plate) {
+    summary = 'A valid Indian vehicle registration number was successfully identified.';
+    extraHtml = `
+      <div>
+        <div class="tech-section-label">Detected Plate Number</div>
+        <div class="ocr-text-box"><span class="ocr-highlight">${escHtml(d.matched_plate)}</span></div>
+      </div>`;
+  } else if (verdict === 'no_text_extracted') {
+    summary = 'No text could be extracted from this image. The image may lack a visible plate or have insufficient resolution.';
+  } else if (d.raw_ocr_text && d.raw_ocr_text.trim()) {
+    summary = 'Text was detected in the image, but no valid Indian vehicle registration number could be identified.';
+    extraHtml = `
+      <div>
+        <div class="tech-section-label">OCR Extracted Text</div>
+        <div class="ocr-text-box">${escHtml(d.raw_ocr_text.trim())}</div>
+      </div>
+      <div>
+        <div class="tech-section-label">Possible Reasons</div>
+        <ul class="ocr-reasons">
+          <li>Plate partially visible or obstructed</li>
+          <li>Low image resolution near the plate area</li>
+          <li>Camera angle or perspective distortion</li>
+          <li>OCR confidence below detection threshold</li>
+        </ul>
+      </div>`;
+  } else if (verdict === 'check_error') {
+    summary = 'The plate OCR check encountered an error during processing.';
+  } else {
+    summary = 'No valid vehicle plate number could be identified in this image.';
+    extraHtml = `
+      <div>
+        <div class="tech-section-label">Possible Reasons</div>
+        <ul class="ocr-reasons">
+          <li>Plate not visible or outside frame</li>
+          <li>Insufficient image sharpness for OCR</li>
+          <li>Camera angle or perspective distortion</li>
+          <li>OCR confidence below detection threshold</li>
+        </ul>
+      </div>`;
+  }
+
+  let tech = '';
+  if (d.matched_plate)                  tech += techRow('Plate Number', d.matched_plate, 'green');
+  if (d.verdict)                        tech += techRow('OCR Verdict', d.verdict.replace(/_/g, ' '));
+
+  return { summary, tech, extraHtml };
+}
+
+function buildCheckContent(c) {
+  const name = c.check_name || '';
+  if (name === 'blur')       return buildBlurContent(c);
+  if (name === 'brightness') return buildBrightnessContent(c);
+  if (name === 'duplicate')  return buildDuplicateContent(c);
+  if (name === 'screenshot') return buildScreenshotContent(c);
+  if (name === 'plate_ocr')  return buildPlateOCRContent(c);
+
+  // Generic fallback for unknown check types
+  const d = c.details || {};
+  const summary = c.passed ? 'Check passed.' : 'Check did not pass.';
+  let tech = '';
+  if (d.verdict) tech += techRow('Verdict', d.verdict.replace(/_/g, ' '));
+  return { summary, tech };
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   SINGLE CHECK CARD BUILDER
+════════════════════════════════════════════════════════════════════════ */
+function buildCheckCard(c) {
+  const kind  = checkVisual(c);
+  const name  = c.check_name || '';
+  const label = kind === 'pass' ? 'Passed' : (kind === 'error' ? 'Error' : 'Review Required');
+  const score = typeof c.score === 'number' ? c.score : null;
+  const pct   = score !== null ? Math.round(score * 100) : 0;
+  const displayName = CHECK_DISPLAY_NAMES[name] || name.replace(/_/g, ' ');
+
+  const { summary, tech, extraHtml } = buildCheckContent(c);
+
+  const scoreHtml = score !== null ? `
+    <div class="score-row">
+      <div class="score-bar-wrap"><div class="score-fill" style="width:${pct}%"></div></div>
+      <span class="score-value">${score.toFixed(2)}</span>
+    </div>` : '';
+
+  const techHtml = tech ? `
+    <div>
+      <div class="tech-section-label">Technical Details</div>
+      <div class="tech-grid">${tech}</div>
+    </div>` : '';
+
+  return `
+    <div class="check-card ${kind}">
+      <div class="check-card-bar"></div>
+      <div class="check-card-body">
+        <div class="check-header">
+          <div class="check-name-group">
+            <div class="check-icon-name">
+              <div class="check-icon">${checkIcon(name)}</div>
+              <div class="check-name">${escHtml(displayName)}</div>
+            </div>
+          </div>
+          <div class="result-badge">${escHtml(label)}</div>
+        </div>
+        ${scoreHtml}
+        <div class="check-summary">${escHtml(summary)}</div>
+        ${techHtml}
+        ${extraHtml || ''}
+      </div>
+    </div>
+  `;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   DETAIL RENDER — structural overhaul; all data from backend, none fabricated
+════════════════════════════════════════════════════════════════════════ */
 function renderDetail(id) {
-  const img = state.images[id];
+  const img  = state.images[id];
   const main = $('#main');
   if (!img) return;
 
-  const statusChip = `<span class="status-chip ${img.status}">${img.status}</span>`;
   const isProcessing = img.status === 'pending' || img.status === 'processing';
   const checks = img.results ? (img.results.checks || []) : null;
   const issues = img.results ? (img.results.issues_found || []) : [];
 
-  // ── Header ─────────────────────────────────────────────────────────────────
-  const checksRun = checks ? checks.length : '—';
-  const issueCount = img.results ? issues.length : '—';
+  const checksCount = checks ? checks.length : '—';
+  const issueCount  = img.results ? issues.length : '—';
+  const hashVal     = img.results && img.results.image_hash
+    ? img.results.image_hash.slice(0, 14) + '…'
+    : '—';
 
-  const head = `
-    <div class="detail-head">
+  // ── Image header card ──────────────────────────────────────────────────────
+  const headerCard = `
+    <div class="detail-header-card">
       <div class="detail-image-wrap">
         <img src="${img.thumb}" alt="${escHtml(img.filename)}">
         ${isProcessing ? '<div class="scan-line"></div>' : ''}
       </div>
       <div class="detail-info">
-        <div class="detail-eyebrow">image · <span style="letter-spacing:0">${escHtml(id)}</span></div>
+        <div class="detail-eyebrow">image&ensp;·&ensp;${escHtml(id)}</div>
         <div class="detail-title">${escHtml(img.filename)}</div>
-        <div class="detail-status-row">${statusChip}</div>
+        <div class="detail-status-row">
+          <span class="status-chip ${img.status}">${img.status}</span>
+        </div>
         <div class="detail-meta-grid">
           <div class="meta-item">
-            <div class="k">Checks run</div>
-            <div class="v">${checksRun}</div>
+            <div class="k">Checks Completed</div>
+            <div class="v">${checksCount}</div>
           </div>
           <div class="meta-item">
-            <div class="k">Issues flagged</div>
+            <div class="k">Findings</div>
             <div class="v">${issueCount}</div>
           </div>
           <div class="meta-item">
-            <div class="k">Hash</div>
-            <div class="v">${img.results && img.results.image_hash ? img.results.image_hash.slice(0, 12) + '…' : '—'}</div>
+            <div class="k">Image Hash</div>
+            <div class="v">${escHtml(hashVal)}</div>
           </div>
         </div>
-        ${img.status === 'failed' ? `<div class="fail-banner">${escHtml(img.failure_reason || 'Processing failed — no reason returned by API')}</div>` : ''}
+        ${img.status === 'failed'
+          ? `<div class="fail-banner">${escHtml(img.failure_reason || 'Processing failed — no reason returned by the API.')}</div>`
+          : ''}
       </div>
     </div>
   `;
 
-  // ── Body ───────────────────────────────────────────────────────────────────
+  // ── Body ────────────────────────────────────────────────────────────────────
   let body = '';
 
   if (isProcessing) {
     body = `
-      <div class="section-label">Waiting on worker</div>
-      <div class="placeholder" style="min-height:160px;">
-        <p>Polling <code style="font-size:11px">/images/${escHtml(id)}/status</code> every 1.5 s — updates automatically.</p>
+      <div class="processing-state">
+        <div class="processing-pulse">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
+        </div>
+        <h4>Analysing Image</h4>
+        <p>The worker is running all 5 checks. This panel updates automatically every 1.5 seconds — no need to refresh.</p>
       </div>
     `;
   } else if (img.status === 'failed') {
-    body = `<div class="section-label">No results — processing failed before checks completed</div>`;
-  } else if (checks && checks.length) {
-    // Issues summary banner
-    const bannerClass = issues.length === 0 ? 'clean' : '';
-    const pillsHtml = issues.map(n => `<span class="issue-pill">${escHtml(n.replace(/_/g, ' '))}</span>`).join('');
-    const bannerText = issues.length === 0
-      ? '<span class="ib-label">✓ All checks passed</span>'
-      : `<span class="ib-label">Issues flagged</span>${pillsHtml}`;
-
-    const tagsHtml = checks.map(c => {
-      const kind = checkVisual(c);
-      const label = kind === 'pass' ? 'PASS' : (kind === 'error' ? 'ERROR' : 'FLAGGED');
-      const score = typeof c.score === 'number' ? c.score : null;
-      const pct = score !== null ? Math.round(score * 100) : 0;
-      const detail = humanDetail(c);
-      const rawJson = c.details ? JSON.stringify(c.details, null, 0) : '';
-
-      return `
-        <div class="tag ${kind}">
-          <div class="tag-top">
-            <div class="tag-name">${escHtml((c.check_name || '').replace(/_/g, ' '))}</div>
-            <div class="stamp">${label}</div>
-          </div>
-          ${score !== null ? `
-          <div class="tag-score-row">
-            <div class="score-bar"><div class="score-fill" style="width:${pct}%"></div></div>
-            <div class="score-num">${score.toFixed(2)}</div>
-          </div>` : ''}
-          ${detail ? `<div class="tag-detail">${escHtml(detail)}</div>` : ''}
-          ${rawJson ? `<div class="tag-raw">${escHtml(rawJson)}</div>` : ''}
-        </div>
-      `;
-    }).join('');
-
     body = `
-      <div class="issues-banner ${bannerClass}">${bannerText}</div>
-      <div class="section-label">Per-check results</div>
-      <div class="tags">${tagsHtml}</div>
+      <div class="processing-state" style="border-color: var(--red-border)">
+        <h4 style="color:var(--red)">Processing Failed</h4>
+        <p>The worker could not complete analysis for this image. No check results are available.</p>
+      </div>
     `;
+  } else if (checks && checks.length) {
+    const sectionHeader = `
+      <div class="section-header">
+        <h3>Per-Check Results</h3>
+        <div class="section-header-line"></div>
+      </div>
+    `;
+    const checkCardsHtml = `<div class="checks-grid">${checks.map(buildCheckCard).join('')}</div>`;
+
+    body = buildSummaryCard(checks, issues) + sectionHeader + checkCardsHtml;
   } else {
-    body = `<div class="section-label">No per-check data returned yet</div>`;
+    body = `<div class="processing-state"><p>No analysis data is available for this image yet.</p></div>`;
   }
 
-  main.innerHTML = head + body;
+  main.innerHTML = headerCard + body;
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-// Auto-detect: if served from the FastAPI origin, leave apiBase blank (same origin).
-// If opened as a local file, default to localhost:8000.
+/* ════════════════════════════════════════════════════════════════════════
+   INIT — auto-detect same-origin, preserved verbatim
+════════════════════════════════════════════════════════════════════════ */
 (function init() {
   const isFileProtocol = window.location.protocol === 'file:';
   if (isFileProtocol) {
     apiBaseInput.value = 'http://localhost:8000';
   } else {
-    // Served by FastAPI — use same origin, leave field blank as hint
     apiBaseInput.placeholder = window.location.origin + ' (auto)';
   }
   checkHealth();
